@@ -1,0 +1,150 @@
+Q1)
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/wait.h>
+
+void bubbleSort(int arr[], int n) {
+    int i, j, temp;
+    for(i = 0; i < n-1; i++) {
+        for(j = 0; j < n-i-1; j++) {
+            if(arr[j] > arr[j+1]) {
+                temp = arr[j];
+                arr[j] = arr[j+1];
+                arr[j+1] = temp;
+            }
+        }
+    }
+}
+
+void insertionSort(int arr[], int n) {
+    int i, key, j;
+    for(i = 1; i < n; i++) {
+        key = arr[i];
+        j = i - 1;
+        while(j >= 0 && arr[j] > key) {
+            arr[j+1] = arr[j];
+            j--;
+        }
+        arr[j+1] = key;
+    }
+}
+
+void printArray(int arr[], int n) {
+    for(int i=0; i<n; i++) printf("%d ", arr[i]);
+    printf("\n");
+}
+
+int main() {
+    int n;
+    printf("Enter number of integers: ");
+    scanf("%d", &n);
+    int arr[n], arr_copy[n];
+    printf("Enter the integers: ");
+    for(int i=0; i<n; i++) {
+        scanf("%d", &arr[i]);
+        arr_copy[i] = arr[i];
+    }
+
+    pid_t pid = fork();
+
+    if(pid < 0) {
+        printf("Fork failed.\n");
+        return 1;
+    } 
+    else if(pid == 0) {
+        insertionSort(arr_copy, n);
+        printf("Child Process (Insertion Sort): ");
+        printArray(arr_copy, n);
+    } 
+    else {
+        wait(NULL);
+        bubbleSort(arr, n);
+        printf("Parent Process (Bubble Sort): ");
+        printArray(arr, n);
+    }
+
+    return 0;
+}
+
+
+Q2)
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+
+void tokenize(char *input, char *tokens[]) {
+    int i = 0;
+    char *p = strtok(input, " \n");
+    while(p != NULL) {
+        tokens[i++] = p;
+        p = strtok(NULL, " \n");
+    }
+    tokens[i] = NULL;
+}
+
+void count_chars(char *filename) {
+    FILE *fp = fopen(filename, "r");
+    if(!fp) { printf("File not found: %s\n", filename); return; }
+    int c, count = 0;
+    while((c = fgetc(fp)) != EOF) count++;
+    fclose(fp);
+    printf("Number of characters: %d\n", count);
+}
+
+void count_words(char *filename) {
+    FILE *fp = fopen(filename, "r");
+    if(!fp) { printf("File not found: %s\n", filename); return; }
+    int c, count = 0, in_word = 0;
+    while((c = fgetc(fp)) != EOF) {
+        if(c==' ' || c=='\n' || c=='\t') in_word = 0;
+        else if(!in_word) { in_word = 1; count++; }
+    }
+    fclose(fp);
+    printf("Number of words: %d\n", count);
+}
+
+void count_lines(char *filename) {
+    FILE *fp = fopen(filename, "r");
+    if(!fp) { printf("File not found: %s\n", filename); return; }
+    int c, count = 0;
+    while((c = fgetc(fp)) != EOF) if(c=='\n') count++;
+    fclose(fp);
+    printf("Number of lines: %d\n", count);
+}
+
+int main() {
+    char input[200], *args[10];
+    pid_t pid;
+
+    while(1) {
+        printf("myshell$ ");
+        fgets(input, sizeof(input), stdin);
+        tokenize(input, args);
+
+        if(args[0]==NULL) continue;
+        if(strcmp(args[0],"exit")==0) break;
+
+        if(strcmp(args[0],"count")==0 && args[1]!=NULL && args[2]!=NULL) {
+            if(strcmp(args[1],"c")==0) count_chars(args[2]);
+            else if(strcmp(args[1],"w")==0) count_words(args[2]);
+            else if(strcmp(args[1],"l")==0) count_lines(args[2]);
+            else printf("Invalid option\n");
+            continue;
+        }
+
+        pid = fork();
+        if(pid==0) {
+            execvp(args[0], args);
+            printf("Command not found.\n");
+            exit(0);
+        } else {
+            wait(NULL);
+        }
+    }
+    return 0;
+}
+
+
