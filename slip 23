@@ -1,0 +1,92 @@
+Q1)
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/types.h>
+
+int main() {
+    pid_t pid;
+
+    pid = fork();
+
+    if (pid < 0) {
+        printf("Fork failed.\n");
+        return 1;
+    } 
+    else if (pid == 0) {
+        sleep(3);
+        printf("Child Process (PID=%d) running after parent terminates.\n", getpid());
+        printf("Child's Parent PID: %d\n", getppid());
+    } 
+    else {
+        printf("Parent Process (PID=%d) terminates.\n", getpid());
+    }
+
+    return 0;
+}
+
+
+Q2)
+#include <stdio.h>
+#include <limits.h>
+
+int main() {
+    int n, i, j, k, pageFaults = 0;
+    printf("Enter number of frames: ");
+    scanf("%d", &n);
+
+    int frames[n];
+    for(i = 0; i < n; i++) frames[i] = -1;
+
+    int refLen;
+    printf("Enter number of pages in reference string: ");
+    scanf("%d", &refLen);
+
+    int ref[refLen];
+    printf("Enter reference string:\n");
+    for(i = 0; i < refLen; i++) scanf("%d", &ref[i]);
+
+    printf("\nPage Replacement Sequence:\n");
+
+    for(i = 0; i < refLen; i++) {
+        int found = 0;
+        for(j = 0; j < n; j++) {
+            if(frames[j] == ref[i]) {
+                found = 1;
+                break;
+            }
+        }
+
+        if(!found) {
+            int replace = -1, farthest = -1;
+            for(j = 0; j < n; j++) {
+                if(frames[j] == -1) {
+                    replace = j;
+                    break;
+                }
+                int nextUse = INT_MAX;
+                for(k = i+1; k < refLen; k++) {
+                    if(ref[k] == frames[j]) {
+                        nextUse = k;
+                        break;
+                    }
+                }
+                if(nextUse > farthest) {
+                    farthest = nextUse;
+                    replace = j;
+                }
+            }
+            frames[replace] = ref[i];
+            pageFaults++;
+        }
+
+        for(j = 0; j < n; j++) {
+            if(frames[j] != -1) printf("%d ", frames[j]);
+            else printf("- ");
+        }
+        printf("\n");
+    }
+
+    printf("\nTotal Page Faults: %d\n", pageFaults);
+    return 0;
+}
+
