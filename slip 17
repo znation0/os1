@@ -1,0 +1,117 @@
+Q1)
+#include <stdio.h>
+
+int main() {
+    int n, ref_len, i, j;
+    printf("Enter number of frames: ");
+    scanf("%d", &n);
+
+    int frames[n];
+    for(i = 0; i < n; i++) frames[i] = -1;
+
+    int reference[] = {7, 5, 4, 8, 5, 7, 2, 3, 1, 3, 5, 9, 4, 6};
+    ref_len = sizeof(reference)/sizeof(reference[0]);
+
+    int page_faults = 0;
+
+    printf("\nPage\tFrames\n");
+    for(i = 0; i < ref_len; i++) {
+        int page = reference[i], found = 0;
+
+        for(j = 0; j < n; j++) {
+            if(frames[j] == page) {
+                found = 1;
+                break;
+            }
+        }
+
+        if(!found) {
+            page_faults++;
+
+            int empty_index = -1;
+            for(j = 0; j < n; j++) {
+                if(frames[j] == -1) {
+                    empty_index = j;
+                    break;
+                }
+            }
+
+            if(empty_index != -1) {
+                frames[empty_index] = page;
+            } else {
+                int farthest = i+1, replace_index = 0;
+                for(j = 0; j < n; j++) {
+                    int k;
+                    for(k = i+1; k < ref_len; k++) {
+                        if(frames[j] == reference[k]) break;
+                    }
+                    if(k > farthest) {
+                        farthest = k;
+                        replace_index = j;
+                    }
+                }
+                frames[replace_index] = page;
+            }
+        }
+
+        printf("%d\t", page);
+        for(j = 0; j < n; j++) {
+            if(frames[j] != -1) printf("%d ", frames[j]);
+            else printf("- ");
+        }
+        printf("\n");
+    }
+
+    printf("\nTotal Page Faults: %d\n", page_faults);
+    return 0;
+}
+
+
+Q2)
+#include <stdio.h>
+
+int main() {
+    int n, i, time = 0;
+    printf("Enter number of processes: ");
+    scanf("%d", &n);
+
+    int at[n], bt[n], ct[n], tat[n], wt[n];
+    printf("Enter arrival times: ");
+    for(i = 0; i < n; i++) scanf("%d", &at[i]);
+    printf("Enter burst times: ");
+    for(i = 0; i < n; i++) scanf("%d", &bt[i]);
+
+    // Sort processes by arrival time
+    for(i = 0; i < n-1; i++) {
+        for(int j = i+1; j < n; j++) {
+            if(at[i] > at[j]) {
+                int temp = at[i]; at[i] = at[j]; at[j] = temp;
+                temp = bt[i]; bt[i] = bt[j]; bt[j] = temp;
+            }
+        }
+    }
+
+    printf("\nGantt Chart:\n");
+    for(i = 0; i < n; i++) {
+        if(time < at[i]) time = at[i];
+        printf("| P%d (%d-%d) ", i+1, time, time+bt[i]);
+        time += bt[i];
+        ct[i] = time;
+        tat[i] = ct[i] - at[i];
+        wt[i] = tat[i] - bt[i];
+    }
+    printf("|\n");
+
+    double total_wt = 0, total_tat = 0;
+    printf("\nProcess\tAT\tBT\tWT\tTAT\n");
+    for(i = 0; i < n; i++) {
+        printf("P%d\t%d\t%d\t%d\t%d\n", i+1, at[i], bt[i], wt[i], tat[i]);
+        total_wt += wt[i];
+        total_tat += tat[i];
+    }
+
+    printf("\nAverage Waiting Time: %.2f\n", total_wt/n);
+    printf("Average Turnaround Time: %.2f\n", total_tat/n);
+
+    return 0;
+}
