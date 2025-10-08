@@ -1,0 +1,169 @@
+Q1)
+#include <stdio.h>
+#include <stdlib.h>
+
+int main() {
+    int n, ref_len, i, j;
+    printf("Enter number of frames: ");
+    scanf("%d", &n);
+
+    int frames[n];
+    int counter[n];
+    for (i = 0; i < n; i++) {
+        frames[i] = -1;
+        counter[i] = 0;
+    }
+
+    int reference[] = {8, 5, 7, 8, 5, 7, 2, 3, 7, 3, 5, 9, 4, 6, 2};
+    ref_len = sizeof(reference)/sizeof(reference[0]);
+
+    int page_faults = 0, time = 0;
+
+    printf("\nPage\tFrames\n");
+    for (i = 0; i < ref_len; i++) {
+        int page = reference[i], found = 0;
+        time++;
+
+        for (j = 0; j < n; j++) {
+            if (frames[j] == page) {
+                counter[j] = time;
+                found = 1;
+                break;
+            }
+        }
+
+        if (!found) {
+            page_faults++;
+
+            int empty_index = -1;
+            for (j = 0; j < n; j++) {
+                if (frames[j] == -1) {
+                    empty_index = j;
+                    break;
+                }
+            }
+
+            if (empty_index != -1) {
+                frames[empty_index] = page;
+                counter[empty_index] = time;
+            } else {
+                int lru_index = 0;
+                int min_time = counter[0];
+                for (j = 1; j < n; j++) {
+                    if (counter[j] < min_time) {
+                        min_time = counter[j];
+                        lru_index = j;
+                    }
+                }
+                frames[lru_index] = page;
+                counter[lru_index] = time;
+            }
+        }
+
+        printf("%d\t", page);
+        for (j = 0; j < n; j++) {
+            if (frames[j] != -1)
+                printf("%d ", frames[j]);
+            else
+                printf("- ");
+        }
+        printf("\n");
+    }
+
+    printf("\nTotal Page Faults: %d\n", page_faults);
+    return 0;
+}
+
+Q2)
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+
+void make_toks(char *s, char *tok[]) {
+    int i = 0;
+    char *p = strtok(s, " \n");
+    while (p != NULL) {
+        tok[i++] = p;
+        p = strtok(NULL, " \n");
+    }
+    tok[i] = NULL;
+}
+
+void search_first(char *filename, char *pattern) {
+    FILE *fp = fopen(filename, "r");
+    if (!fp) {
+        printf("File not found: %s\n", filename);
+        return;
+    }
+    char line[500];
+    int line_no = 1;
+    while (fgets(line, sizeof(line), fp) != NULL) {
+        if (strstr(line, pattern) != NULL) {
+            printf("First occurrence at line %d: %s", line_no, line);
+            fclose(fp);
+            return;
+        }
+        line_no++;
+    }
+    printf("Pattern not found.\n");
+    fclose(fp);
+}
+
+void search_count(char *filename, char *pattern) {
+    FILE *fp = fopen(filename, "r");
+    if (!fp) {
+        printf("File not found: %s\n", filename);
+        return;
+    }
+    char line[500];
+    int count = 0;
+    while (fgets(line, sizeof(line), fp) != NULL) {
+        char *p = line;
+        while ((p = strstr(p, pattern)) != NULL) {
+            count++;
+            p += strlen(pattern);
+        }
+    }
+    printf("Total occurrences: %d\n", count);
+    fclose(fp);
+}
+
+int main() {
+    char cmd[200], *args[10];
+    pid_t pid;
+
+    while (1) {
+        printf("myshell$ ");
+        fgets(cmd, sizeof(cmd), stdin);
+        make_toks(cmd, args);
+
+        if (args[0] == NULL) continue;
+        if (strcmp(args[0], "exit") == 0) break;
+
+        if (strcmp(args[0], "search") == 0) {
+            if (args[1] == NULL || args[2] == NULL || args[3] == NULL) {
+                printf("Usage: search f/c filename pattern\n");
+            } else if (strcmp(args[1], "f") == 0) {
+                search_first(args[2], args[3]);
+            } else if (strcmp(args[1], "c") == 0) {
+                search_count(args[2], args[3]);
+            } else {
+                printf("Invalid option. Use f or c\n");
+            }
+            continue;
+        }
+
+        pid = fork();
+        if (pid == 0) {
+            execvp(args[0], args);
+            printf("Command not found.\n");
+            exit(0);
+        } else {
+            wait(NULL);
+        }
+    }
+    return 0;
+}
