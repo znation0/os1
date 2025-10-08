@@ -1,0 +1,160 @@
+Q1) 
+//parent
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/wait.h>
+
+void bubbleSort(int arr[], int n) {
+    int i, j, temp;
+    for(i=0; i<n-1; i++) {
+        for(j=0; j<n-i-1; j++) {
+            if(arr[j] > arr[j+1]) {
+                temp = arr[j];
+                arr[j] = arr[j+1];
+                arr[j+1] = temp;
+            }
+        }
+    }
+}
+
+int main(int argc, char *argv[]) {
+    int n;
+    printf("Enter number of integers: ");
+    scanf("%d", &n);
+
+    int arr[n];
+    printf("Enter integers: ");
+    for(int i=0; i<n; i++) scanf("%d", &arr[i]);
+
+    bubbleSort(arr, n);
+
+    char *args[n+3]; // array size + program + NULL
+    args[0] = "./child_search"; // program to execute
+    args[1] = malloc(10);
+    sprintf(args[1], "%d", n); // pass size
+    for(int i=0; i<n; i++) {
+        args[i+2] = malloc(10);
+        sprintf(args[i+2], "%d", arr[i]); // pass sorted array elements
+    }
+    args[n+2] = NULL;
+
+    pid_t pid = fork();
+    if(pid < 0) {
+        printf("Fork failed\n");
+        return 1;
+    }
+    else if(pid == 0) {
+        execve("./child_search", args, NULL);
+        perror("execve");
+        exit(1);
+    } else {
+        wait(NULL);
+    }
+
+    return 0;
+}
+
+//child
+#include <stdio.h>
+#include <stdlib.h>
+
+int binarySearch(int arr[], int n, int key) {
+    int l = 0, r = n-1;
+    while(l <= r) {
+        int mid = l + (r-l)/2;
+        if(arr[mid] == key) return mid;
+        else if(arr[mid] < key) l = mid + 1;
+        else r = mid - 1;
+    }
+    return -1;
+}
+
+int main(int argc, char *argv[]) {
+    if(argc < 2) {
+        printf("No array provided\n");
+        return 1;
+    }
+
+    int n = atoi(argv[1]);
+    int arr[n];
+    for(int i=0; i<n; i++) arr[i] = atoi(argv[i+2]);
+
+    int key;
+    printf("Enter element to search: ");
+    scanf("%d", &key);
+
+    int index = binarySearch(arr, n, key);
+    if(index != -1) printf("Element %d found at position %d\n", key, index);
+    else printf("Element %d not found\n", key);
+
+    return 0;
+}
+
+
+Q2)
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+
+void tokenize(char *input, char *tokens[]) {
+    int i = 0;
+    char *p = strtok(input, " \n");
+    while(p != NULL) {
+        tokens[i++] = p;
+        p = strtok(NULL, " \n");
+    }
+    tokens[i] = NULL;
+}
+
+void search_first(char *filename, char *pattern) {
+    FILE *fp = fopen(filename, "r");
+    if(!fp) { printf("File not found: %s\n", filename); return; }
+
+    char line[1024];
+    int found = 0;
+    while(fgets(line, sizeof(line), fp)) {
+        if(strstr(line, pattern)) {
+            printf("First occurrence: %s", line);
+            found = 1;
+            break;
+        }
+    }
+    if(!found) printf("Pattern not found.\n");
+    fclose(fp);
+}
+
+int main() {
+    char input[200], *args[10];
+    pid_t pid;
+
+    while(1) {
+        printf("myshell$ ");
+        fgets(input, sizeof(input), stdin);
+        tokenize(input, args);
+
+        if(args[0]==NULL) continue;
+        if(strcmp(args[0],"exit")==0) break;
+
+        if(strcmp(args[0],"search")==0 && args[1]!=NULL && args[2]!=NULL && args[3]!=NULL) {
+            if(strcmp(args[1],"f")==0) search_first(args[2], args[3]);
+            else printf("Invalid option\n");
+            continue;
+        }
+
+        pid = fork();
+        if(pid==0) {
+            execvp(args[0], args);
+            printf("Command not found.\n");
+            exit(0);
+        } else {
+            wait(NULL);
+        }
+    }
+    return 0;
+}
+
+
